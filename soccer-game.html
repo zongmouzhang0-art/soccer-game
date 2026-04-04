@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>足球反波膽</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  background: #051005 !important;
+  color: #e0f0e0 !important;
+  font-family: 'Noto Sans SC', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 40% at 50% 0%, rgba(0,90,0,0.5) 0%, transparent 60%),
+    repeating-linear-gradient(0deg, transparent 0px, transparent 47px, rgba(0,60,0,0.12) 48px),
+    repeating-linear-gradient(90deg, transparent 0px, transparent 47px, rgba(0,60,0,0.08) 48px);
+}
+
+.app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 10px 10px 90px; }
+
+/* ── HEADER ── */
+.hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 14px; margin-bottom: 8px;
+  background: rgba(3,18,3,0.95);
+  border: 1px solid rgba(255,215,0,0.18);
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+}
+.logo { display: flex; align-items: center; gap: 8px; }
+.logo-icon { font-size: 22px; }
+.logo-text { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 900; color: #ffd700; letter-spacing: 1px; text-shadow: 0 0 12px rgba(255,215,0,0.4); }
+.logo-sub { font-size: 9px; color: rgba(200,230,200,0.5); letter-spacing: 2px; text-transform: uppercase; }
+.coin-pill { display: flex; align-items: center; gap: 5px; background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.4); border-radius: 20px; padding: 5px 12px; }
+.coin-val { font-family: 'Orbitron', monospace; font-size: 14px; font-weight: 700; color: #ffd700; text-shadow: 0 0 8px rgba(255,215,0,0.4); }
+
+/* ── BANNERS ── */
+.bar { display: flex; align-items: center; gap: 8px; padding: 9px 13px; margin-bottom: 8px; border-radius: 12px; }
+.bar.hide { display: none; }
+.bar-tg { background: rgba(0,50,0,0.4); border: 1px solid rgba(255,215,0,0.2); }
+.bar-daily { background: rgba(0,80,0,0.4); border: 1px solid rgba(0,220,100,0.25); animation: sdown 0.4s ease; }
+.bar-daily span { font-size: 13px; color: #00e676; font-weight: 500; }
+.bar-daily b { font-family: 'Orbitron', monospace; font-size: 13px; color: #ffd700; margin-left: auto; }
+.bar-x { margin-left: 8px; font-size: 18px; color: rgba(200,230,200,0.5); cursor: pointer; }
+
+.vip-bar { padding: 12px 16px; margin-bottom: 8px; text-align: center; background: linear-gradient(135deg, rgba(255,200,0,0.13), rgba(255,130,0,0.08)); border: 2px solid #ffd700; border-radius: 16px; display: none; animation: glow 2.5s ease-in-out infinite; }
+.vip-bar.show { display: block; }
+.vip-bar p { font-size: 13px; font-weight: 700; color: #ffd700; margin-bottom: 8px; }
+.vip-bar button { padding: 9px 22px; background: linear-gradient(135deg,#ffd700,#ffaa00); color: #000; font-weight: 700; font-size: 14px; border: none; border-radius: 20px; cursor: pointer; font-family: 'Noto Sans SC', sans-serif; }
+
+@keyframes sdown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+@keyframes glow { 0%,100%{box-shadow:0 0 8px rgba(255,215,0,0.2)} 50%{box-shadow:0 0 24px rgba(255,215,0,0.5)} }
+
+/* ── TABS ── */
+.tabs { display: flex; gap: 5px; margin-bottom: 10px; background: rgba(3,18,3,0.95); border: 1px solid rgba(255,215,0,0.15); border-radius: 16px; padding: 5px; backdrop-filter: blur(16px); }
+.tab { flex: 1; padding: 9px 4px; background: transparent; border: none; color: rgba(180,210,180,0.6); font-family: 'Noto Sans SC', sans-serif; font-size: 12px; font-weight: 500; border-radius: 10px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+.tab.on { background: linear-gradient(135deg, rgba(255,215,0,0.16), rgba(255,215,0,0.07)); color: #ffd700; border: 1px solid rgba(255,215,0,0.4); box-shadow: 0 0 10px rgba(255,215,0,0.2); }
+.tab:active { transform: scale(0.96); }
+
+/* ── PANELS ── */
+.panel { display: none; }
+.panel.on { display: block; animation: fin 0.3s ease; }
+@keyframes fin { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+.sec-lbl { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: rgba(180,210,180,0.55); text-transform: uppercase; margin-bottom: 8px; padding-left: 2px; }
+
+/* ── MATCH CARD ── */
+.mc { background: rgba(3,18,3,0.92); border: 1px solid rgba(255,215,0,0.13); border-radius: 14px; padding: 12px 14px; margin-bottom: 7px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 16px rgba(0,0,0,0.5); position: relative; overflow: hidden; }
+.mc::after { content:''; position:absolute;top:0;left:0;right:0;height:2px; background:linear-gradient(90deg,transparent,rgba(255,215,0,0.5),transparent); opacity:0; transition:opacity 0.3s; }
+.mc:hover, .mc.sel { border-color: rgba(255,215,0,0.45); box-shadow: 0 0 18px rgba(255,215,0,0.15), 0 4px 20px rgba(0,0,0,0.5); }
+.mc:hover::after, .mc.sel::after { opacity: 1; }
+.mc.sel { background: rgba(8,35,8,0.97); }
+.mc:active { transform: scale(0.99); }
+.mc-league { font-size: 10px; color: rgba(255,215,0,0.7); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 5px; font-weight: 600; }
+.mc-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.mc-team { font-size: 15px; font-weight: 700; color: #e0f0e0; max-width: 42%; }
+.mc-team.r { text-align: right; }
+.mc-vs { font-family: 'Orbitron', monospace; font-size: 10px; color: #ffd700; background: rgba(255,215,0,0.09); border: 1px solid rgba(255,215,0,0.2); border-radius: 6px; padding: 3px 7px; }
+.mc-foot { display: flex; justify-content: space-between; align-items: center; }
+.mc-time { font-size: 11px; color: rgba(180,210,180,0.55); }
+.mc-badge { font-size: 10px; padding: 2px 9px; border-radius: 10px; font-weight: 700; letter-spacing: 1px; }
+.mc-badge.live { background:rgba(255,23,68,0.18); color:#ff6090; border:1px solid rgba(255,23,68,0.35); }
+.mc-badge.soon { background:rgba(255,215,0,0.12); color:#ffd700; border:1px solid rgba(255,215,0,0.3); }
+.mc-badge.night { background:rgba(0,220,100,0.1); color:#00e676; border:1px solid rgba(0,220,100,0.25); }
+
+/* ── BET BOX ── */
+.bet-box { background: rgba(3,18,3,0.92); border: 1px solid rgba(255,215,0,0.13); border-radius: 14px; padding: 14px; margin-bottom: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+.bet-box.hide { display: none; }
+.bet-mhd { text-align: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,215,0,0.1); }
+.bet-mhd .teams { font-size: 16px; font-weight: 700; color: #e0f0e0; margin-bottom: 2px; }
+.bet-mhd .league { font-size: 10px; color: rgba(255,215,0,0.6); letter-spacing: 1.5px; text-transform: uppercase; }
+
+.sg-lbl { font-size: 10px; color: rgba(180,210,180,0.55); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px; text-align: center; font-weight: 700; }
+
+/* 賠率說明 */
+.odds-legend { display: flex; gap: 5px; margin-bottom: 8px; justify-content: center; }
+.ol { font-size: 10px; padding: 3px 8px; border-radius: 8px; font-weight: 600; }
+.ol.lo { background: rgba(0,160,60,0.15); color: rgba(100,200,100,0.9); border: 1px solid rgba(0,160,60,0.25); }
+.ol.md { background: rgba(255,215,0,0.1); color: rgba(255,215,0,0.9); border: 1px solid rgba(255,215,0,0.25); }
+.ol.hi { background: rgba(255,100,30,0.12); color: rgba(255,140,60,0.95); border: 1px solid rgba(255,100,30,0.25); }
+
+/* ── SCORE GRID ── */
+.sg { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; margin-bottom: 13px; }
+.sb {
+  aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(2,12,2,0.9); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 9px; cursor: pointer; transition: all 0.15s; gap: 2px;
+}
+.sb-score { font-family: 'Orbitron', monospace; font-size: 12px; font-weight: 700; color: rgba(200,230,200,0.75); line-height: 1; }
+.sb-rate { font-size: 9px; font-weight: 700; line-height: 1; }
+.sb.tier-lo .sb-rate { color: rgba(80,200,100,0.8); }
+.sb.tier-md .sb-rate { color: rgba(255,215,0,0.8); }
+.sb.tier-hi .sb-rate { color: rgba(255,140,50,0.95); }
+.sb:hover { border-color: rgba(255,215,0,0.3); }
+.sb:active { transform: scale(0.88); filter: brightness(0.85); }
+.sb.sel { background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,170,0,0.1)); border-color: #ffd700; box-shadow: 0 0 14px rgba(255,215,0,0.35); }
+.sb.sel .sb-score { color: #ffd700; }
+
+/* ── AMOUNT ── */
+.amt-sec { margin-bottom: 11px; }
+.amt-lbl { font-size: 10px; color: rgba(180,210,180,0.55); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 7px; font-weight: 700; }
+.presets { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; margin-bottom: 7px; }
+.pb { padding: 8px 4px; text-align: center; background: rgba(2,12,2,0.9); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; font-size: 12px; font-weight: 600; color: rgba(180,210,180,0.6); cursor: pointer; transition: all 0.15s; font-family: 'Noto Sans SC', sans-serif; }
+.pb:hover { border-color: rgba(255,215,0,0.35); color: #ffd700; }
+.pb:active { transform: scale(0.93); }
+.pb.on { border-color: #ffd700; color: #ffd700; background: rgba(255,215,0,0.08); }
+.amt-input { width: 100%; padding: 11px 14px; background: rgba(2,12,2,0.95); border: 1px solid rgba(255,215,0,0.2); border-radius: 9px; color: #ffd700; font-family: 'Orbitron', monospace; font-size: 18px; font-weight: 700; text-align: center; outline: none; transition: all 0.2s; }
+.amt-input:focus { border-color: #ffd700; box-shadow: 0 0 0 2px rgba(255,215,0,0.2); }
+.amt-input::placeholder { color: rgba(255,215,0,0.2); font-size: 13px; font-family: 'Noto Sans SC', sans-serif; }
+
+.binfo { display: flex; justify-content: space-between; padding: 8px 11px; background: rgba(0,0,0,0.3); border-radius: 8px; margin-bottom: 11px; font-size: 12px; }
+.bi { color: rgba(180,210,180,0.6); }
+.bi b { color: #ffd700; font-weight: 600; }
+
+.play-btn { width: 100%; padding: 13px; background: linear-gradient(135deg, #155215, #0b3a0b); border: 2px solid #4caf50; border-radius: 12px; color: #e0f0e0; font-size: 15px; font-weight: 700; font-family: 'Noto Sans SC', sans-serif; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; box-shadow: 0 4px 18px rgba(76,175,80,0.25); }
+.play-btn:hover { border-color: #00e676; box-shadow: 0 4px 24px rgba(0,230,118,0.3); }
+.play-btn:active { transform: scale(0.97); filter: brightness(0.88); }
+.play-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; filter: none; }
+
+/* ── MATCH LIVE ── */
+.match-live { background: rgba(3,18,3,0.95); border: 1px solid rgba(0,220,100,0.3); border-radius: 14px; padding: 20px; margin-bottom: 8px; text-align: center; box-shadow: 0 0 24px rgba(0,220,100,0.1), 0 4px 20px rgba(0,0,0,0.5); }
+.match-live.hide { display: none; }
+.ml-status { font-size: 10px; color: #00e676; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.ml-dot { width: 7px; height: 7px; background: #00e676; border-radius: 50%; animation: blink 1s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+.ml-teams { font-size: 15px; font-weight: 700; color: #e0f0e0; margin-bottom: 12px; }
+.ml-board { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px; }
+.ml-num { font-family: 'Orbitron', monospace; font-size: 38px; font-weight: 900; color: #ffd700; text-shadow: 0 0 20px rgba(255,215,0,0.5); min-width: 48px; text-align: center; transition: all 0.4s ease; }
+.ml-sep { font-family: 'Orbitron', monospace; font-size: 28px; color: rgba(255,215,0,0.4); }
+.ml-min { font-size: 13px; color: #00e676; margin-bottom: 12px; font-weight: 500; }
+.ml-info { font-size: 12px; color: rgba(180,210,180,0.6); margin-bottom: 14px; }
+.ml-info b { color: #ffd700; }
+.ml-bar { height: 4px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; margin-bottom: 6px; }
+.ml-fill { height: 100%; background: linear-gradient(90deg, #4caf50, #00e676); border-radius: 2px; transition: width 1s linear; }
+.ml-cd { font-size: 11px; color: rgba(180,210,180,0.45); }
+
+/* ── RESULT ── */
+.result-card { border-radius: 14px; padding: 20px; text-align: center; margin-bottom: 8px; border: 2px solid; animation: rpop 0.45s cubic-bezier(0.34,1.56,0.64,1); }
+.result-card.win { background: linear-gradient(135deg,rgba(0,90,25,0.55),rgba(0,50,15,0.45)); border-color: #00e676; box-shadow: 0 0 28px rgba(0,230,118,0.2), 0 4px 20px rgba(0,0,0,0.5); }
+.result-card.loss { background: linear-gradient(135deg,rgba(90,0,15,0.55),rgba(50,0,10,0.45)); border-color: #ff4569; box-shadow: 0 0 28px rgba(255,69,105,0.15), 0 4px 20px rgba(0,0,0,0.5); }
+@keyframes rpop { from{opacity:0;transform:scale(0.84)} to{opacity:1;transform:scale(1)} }
+.rc-icon { font-size: 44px; margin-bottom: 5px; }
+.rc-title { font-family: 'Orbitron', monospace; font-size: 19px; font-weight: 900; margin-bottom: 5px; }
+.result-card.win .rc-title { color: #00e676; text-shadow: 0 0 12px rgba(0,230,118,0.45); }
+.result-card.loss .rc-title { color: #ff4569; }
+.rc-desc { font-size: 13px; color: rgba(180,210,180,0.75); margin-bottom: 8px; line-height: 1.7; }
+.rc-amount { font-family: 'Orbitron', monospace; font-size: 24px; font-weight: 900; margin-bottom: 12px; }
+.result-card.win .rc-amount { color: #ffd700; }
+.result-card.loss .rc-amount { color: #ff4569; }
+.rc-btn { display: inline-block; padding: 9px 24px; background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.4); border-radius: 20px; color: #ffd700; font-size: 13px; cursor: pointer; transition: all 0.2s; font-family: 'Noto Sans SC', sans-serif; }
+.rc-btn:active { transform: scale(0.96); }
+
+/* ── HISTORY ── */
+.hi { display: flex; align-items: center; justify-content: space-between; padding: 10px 13px; background: rgba(3,18,3,0.92); border: 1px solid rgba(255,215,0,0.1); border-radius: 12px; margin-bottom: 6px; }
+.hi-l { flex: 1; }
+.hi-match { font-size: 13px; font-weight: 600; color: #e0f0e0; margin-bottom: 2px; }
+.hi-detail { font-size: 11px; color: rgba(180,210,180,0.5); }
+.hi-r { text-align: right; }
+.hi-amt { font-family: 'Orbitron', monospace; font-size: 14px; font-weight: 700; }
+.hi-amt.w { color: #00e676; } .hi-amt.l { color: #ff4569; }
+.hi-tag { font-size: 10px; font-weight: 700; letter-spacing: 1px; margin-top: 1px; }
+.hi-tag.w { color: #00e676; } .hi-tag.l { color: #ff4569; }
+
+/* ── PROFILE ── */
+.prof-card { background: rgba(3,18,3,0.92); border: 1px solid rgba(255,215,0,0.13); border-radius: 14px; padding: 20px; margin-bottom: 10px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+.prof-av { width: 66px; height: 66px; border-radius: 50%; background: linear-gradient(135deg,#1a6b1a,#0d4d0d); border: 2px solid rgba(255,215,0,0.45); display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 10px; box-shadow: 0 0 20px rgba(255,215,0,0.2); }
+.prof-name { font-size: 18px; font-weight: 700; color: #e0f0e0; margin-bottom: 2px; }
+.prof-id { font-size: 11px; color: rgba(180,210,180,0.5); letter-spacing: 1px; margin-bottom: 16px; }
+.prof-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 16px; }
+.pst { background: rgba(0,0,0,0.3); border-radius: 9px; padding: 10px 6px; border: 1px solid rgba(255,215,0,0.1); }
+.pst-v { font-family: 'Orbitron', monospace; font-size: 18px; font-weight: 700; color: #ffd700; }
+.pst-l { font-size: 10px; color: rgba(180,210,180,0.5); margin-top: 2px; }
+.act-btn { width: 100%; padding: 11px; background: rgba(255,215,0,0.07); border: 1px solid rgba(255,215,0,0.18); border-radius: 12px; color: #ffd700; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-bottom: 7px; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'Noto Sans SC', sans-serif; }
+.act-btn:hover { border-color: rgba(255,215,0,0.45); background: rgba(255,215,0,0.1); }
+.act-btn:active { transform: scale(0.97); }
+
+/* ── RULES ── */
+.rules-card { background: rgba(3,18,3,0.92); border: 1px solid rgba(255,215,0,0.1); border-radius: 14px; padding: 14px; }
+.rules-title { font-size: 11px; font-weight: 700; color: rgba(255,215,0,0.7); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+.rule-row { display: flex; gap: 8px; margin-bottom: 7px; font-size: 12px; color: rgba(180,210,180,0.7); line-height: 1.5; }
+.rule-row::before { content:'▸'; color:#ffd700; flex-shrink:0; }
+
+/* ── MODAL ── */
+.mo { position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(5px);opacity:0;pointer-events:none;transition:opacity 0.3s; }
+.mo.show { opacity:1;pointer-events:all; }
+.mo-box { background:linear-gradient(160deg,#081a08,#030d03);border:1px solid rgba(255,215,0,0.4);border-radius:16px;padding:22px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.9),0 0 40px rgba(255,215,0,0.15);transform:scale(0.88);transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+.mo.show .mo-box { transform:scale(1); }
+.mo-title { font-size:17px;font-weight:700;color:#ffd700;margin-bottom:9px;text-align:center; }
+.mo-body { font-size:14px;color:rgba(180,210,180,0.75);text-align:center;line-height:1.7;margin-bottom:16px; }
+.mo-btns { display:flex;gap:8px; }
+.mo-btn { flex:1;padding:12px;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;font-family:'Noto Sans SC',sans-serif; }
+.mo-btn.p { background:linear-gradient(135deg,#ffd700,#ffaa00);color:#000; }
+.mo-btn.s { background:rgba(255,255,255,0.07);color:#e0f0e0;border:1px solid rgba(255,255,255,0.12); }
+.mo-btn:active { transform:scale(0.96); }
+
+/* ── TOAST ── */
+.toast { position:fixed;top:12px;left:50%;transform:translateX(-50%) translateY(-80px);background:rgba(3,18,3,0.97);border:1px solid rgba(255,215,0,0.45);border-radius:20px;padding:9px 20px;font-size:13px;font-weight:600;color:#ffd700;box-shadow:0 0 20px rgba(255,215,0,0.2);z-index:300;transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1);white-space:nowrap; }
+.toast.show { transform:translateX(-50%) translateY(0); }
+
+.empty { text-align:center;padding:40px 20px;color:rgba(180,210,180,0.45); }
+.empty-icon { font-size:46px;margin-bottom:12px; }
+::-webkit-scrollbar{width:3px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:rgba(255,215,0,0.2);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="hdr">
+    <div class="logo">
+      <span class="logo-icon">⚽</span>
+      <div>
+        <div class="logo-text">反波膽</div>
+        <div class="logo-sub">ANTI-SCORE PRO</div>
+      </div>
+    </div>
+    <div class="coin-pill"><span>🪙</span><span class="coin-val" id="coinVal">50,000</span></div>
+  </div>
+
+  <!-- TG USER BAR -->
+  <div class="bar bar-tg hide" id="tgBar">
+    <span id="tgAv" style="font-size:22px">👤</span>
+    <div>
+      <div style="font-size:13px;font-weight:600;color:#e0f0e0" id="tgName">—</div>
+      <div style="font-size:11px;color:rgba(180,210,180,0.5)" id="tgSub">—</div>
+    </div>
+    <span id="tgBadge" style="margin-left:auto;font-size:11px;padding:2px 9px;border-radius:10px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);color:#ffd700">🎮 玩家</span>
+  </div>
+
+  <!-- DAILY BONUS -->
+  <div class="bar bar-daily hide" id="dailyBar">
+    <span>🎁</span><span>每日登录奖励</span>
+    <b>+1,000 🪙</b>
+    <span class="bar-x" onclick="this.parentElement.classList.add('hide')">×</span>
+  </div>
+
+  <!-- VIP -->
+  <div class="vip-bar" id="vipBar">
+    <p>🎉 恭喜！金币已达 120,000，可领取体验金！</p>
+    <p style="font-size:12px;color:rgba(255,215,0,0.75);margin-bottom:8px">联系客服 @Gmgn_ai_01 领取</p>
+    <button onclick="showVip()">🏆 立即联系客服领取</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" onclick="go('matches')">🏟️ 赛事</button>
+    <button class="tab" onclick="go('bet')">🎯 下注</button>
+    <button class="tab" onclick="go('history')">📊 记录</button>
+    <button class="tab" onclick="go('profile')">👤 我的</button>
+  </div>
+
+  <!-- ══ MATCHES ══ -->
+  <div id="p-matches" class="panel on">
+    <div class="sec-lbl">🔥 今日热门赛事 · 点击选择</div>
+    <div id="matchList"></div>
+  </div>
+
+  <!-- ══ BET ══ -->
+  <div id="p-bet" class="panel">
+    <div class="bet-box" id="betBox">
+      <div class="bet-mhd" id="betHd">
+        <div class="teams">请先选择赛事</div>
+        <div class="league">——</div>
+      </div>
+      <div class="sg-lbl">选择你「反对」出现的比分</div>
+      <div class="odds-legend">
+        <div class="ol lo">低赔 2-5%（罕见比分）</div>
+        <div class="ol md">中赔 6-9%（普通比分）</div>
+        <div class="ol hi">高赔 10-13%（常见比分）</div>
+      </div>
+      <div class="sg" id="sg"></div>
+      <div class="amt-sec">
+        <div class="amt-lbl">下注金额</div>
+        <div class="presets">
+          <button class="pb" onclick="setAmt(500)">500</button>
+          <button class="pb" onclick="setAmt(1000)">1,000</button>
+          <button class="pb" onclick="setAmt(3000)">3,000</button>
+          <button class="pb" onclick="setAmt(5000)">5,000</button>
+        </div>
+        <input type="number" class="amt-input" id="amtIn" placeholder="输入自定义金额" min="100" oninput="updInfo()">
+      </div>
+      <div class="binfo">
+        <div class="bi">下注：<b id="iAmt">—</b></div>
+        <div class="bi">赔率：<b id="iRate">—</b></div>
+        <div class="bi">预期赢：<b id="iWin">—</b></div>
+      </div>
+      <button class="play-btn" id="playBtn" onclick="confirmBet()">⚽ 确认下注</button>
+    </div>
+
+    <div class="match-live hide" id="matchLive">
+      <div class="ml-status"><div class="ml-dot"></div>比赛进行中</div>
+      <div class="ml-teams" id="mlTeams">—</div>
+      <div class="ml-board">
+        <div class="ml-num" id="mlH">0</div>
+        <div class="ml-sep">:</div>
+        <div class="ml-num" id="mlA">0</div>
+      </div>
+      <div class="ml-min" id="mlMin">第 0 分钟</div>
+      <div class="ml-info" id="mlInfo">—</div>
+      <div class="ml-bar"><div class="ml-fill" id="mlFill" style="width:0%"></div></div>
+      <div class="ml-cd" id="mlCd">比赛结束后自动结算</div>
+    </div>
+
+    <div id="resultArea"></div>
+  </div>
+
+  <!-- ══ HISTORY ══ -->
+  <div id="p-history" class="panel">
+    <div class="sec-lbl">下注记录</div>
+    <div id="histList"></div>
+  </div>
+
+  <!-- ══ PROFILE ══ -->
+  <div id="p-profile" class="panel">
+    <div class="prof-card">
+      <div class="prof-av">⚽</div>
+      <div class="prof-name" id="profName">足球爱好者</div>
+      <div class="prof-id" id="profId">游客模式</div>
+      <div class="prof-stats">
+        <div class="pst"><div class="pst-v" id="sW">0</div><div class="pst-l">胜场</div></div>
+        <div class="pst"><div class="pst-v" id="sL">0</div><div class="pst-l">负场</div></div>
+        <div class="pst"><div class="pst-v" id="sR">—</div><div class="pst-l">胜率</div></div>
+      </div>
+    </div>
+    <button class="act-btn" onclick="doShare()">📤 分享战绩 · +300 金币</button>
+    <div id="adminSlot"></div>
+    <div class="rules-card">
+      <div class="rules-title">📖 玩法说明</div>
+      <div class="rule-row">选择赛事，然后选择你「反对」出现的比分</div>
+      <div class="rule-row">比赛90分钟结束后，最终比分不是你选的 → 你赢</div>
+      <div class="rule-row">常见比分（1-0、1-1）赔率低约 3%；罕见比分（3-3）赔率高达 13%</div>
+      <div class="rule-row">输了扣除全部下注金额，赢了返还本金 + 赔率收益</div>
+    </div>
+  </div>
+</div>
+
+<div class="mo" id="modal">
+  <div class="mo-box">
+    <div class="mo-title" id="moTitle"></div>
+    <div class="mo-body" id="moBody"></div>
+    <div class="mo-btns" id="moBtns"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════
+//  CONFIG  ← 改這裡
+// ══════════════════════════════
+const ADMIN_IDS  = [123456789];   // 填入你的 Telegram User ID
+const INIT_COINS  = 50000;
+const DAILY_BONUS = 1000;
+const SHARE_BONUS = 300;
+const VIP_THRESH  = 120000;
+const MATCH_SECS  = 20;           // 模擬比賽秒數
+
+// ══════════════════════════════
+//  每個比分的賠率與層級
+//  tier: lo=低賠(綠) md=中賠(黃) hi=高賠(橙)
+// ══════════════════════════════
+const ODDS = {
+  // 常見比分→反對風險高→賠率高；罕見比分→反對風險低→賠率低
+  '1-1':{ r:0.13, t:'hi' },
+  '1-0':{ r:0.12, t:'hi' },
+  '0-1':{ r:0.12, t:'hi' },
+  '2-1':{ r:0.10, t:'hi' },
+  '1-2':{ r:0.10, t:'hi' },
+  '0-0':{ r:0.09, t:'md' },
+  '2-0':{ r:0.08, t:'md' },
+  '0-2':{ r:0.08, t:'md' },
+  '2-2':{ r:0.07, t:'md' },
+  '3-1':{ r:0.06, t:'md' },
+  '1-3':{ r:0.06, t:'md' },
+  '3-0':{ r:0.05, t:'lo' },
+  '0-3':{ r:0.05, t:'lo' },
+  '3-2':{ r:0.04, t:'lo' },
+  '2-3':{ r:0.04, t:'lo' },
+  '3-3':{ r:0.02, t:'lo' },
+};
+
+// 加權隨機比分（模擬真實足球出現概率）
+const WEIGHTS = {
+  '1-0':9,'0-1':8,'1-1':11,'2-1':7,'1-2':6,'2-0':6,'0-2':5,
+  '2-2':5,'3-1':4,'1-3':3,'3-0':3,'0-3':3,'0-0':6,'3-2':2,'2-3':2,'3-3':1,
+};
+
+const MATCHES = [
+  {id:1,  home:'曼城',         away:'阿森纳',     league:'英超 · 第32轮',      time:'今日 20:45', st:'soon'},
+  {id:2,  home:'皇马',         away:'巴塞罗那',   league:'西甲 · 国家德比',    time:'今日 21:00', st:'soon'},
+  {id:3,  home:'拜仁',         away:'多特蒙德',   league:'德甲 · 德比大战',    time:'进行中 34\'', st:'live'},
+  {id:4,  home:'巴黎圣日耳曼', away:'马赛',       league:'法甲 · 第30轮',      time:'进行中 67\'', st:'live'},
+  {id:5,  home:'国米',         away:'AC米兰',     league:'意甲 · 米兰德比',    time:'今日 22:45', st:'soon'},
+  {id:6,  home:'利物浦',       away:'曼联',       league:'英超 · 西北德比',    time:'明日 21:00', st:'night'},
+  {id:7,  home:'尤文图斯',     away:'那不勒斯',   league:'意甲 · 第31轮',      time:'明日 22:45', st:'night'},
+  {id:8,  home:'马竞',         away:'塞维利亚',   league:'西甲 · 第31轮',      time:'后日 20:00', st:'night'},
+  {id:9,  home:'阿贾克斯',     away:'PSV',        league:'荷甲 · 积分大战',    time:'今日 23:00', st:'soon'},
+  {id:10, home:'本菲卡',       away:'波尔图',     league:'葡超 · 葡萄牙德比',  time:'明日 00:15', st:'night'},
+  {id:11, home:'切尔西',       away:'热刺',       league:'英超 · 伦敦德比',    time:'今日 23:30', st:'soon'},
+  {id:12, home:'莱比锡',       away:'勒沃库森',   league:'德甲 · 第30轮',      time:'后日 21:30', st:'night'},
+];
+
+// ══════════════════════════════
+//  TELEGRAM
+// ══════════════════════════════
+const tg  = window.Telegram?.WebApp;
+const tgU = tg?.initDataUnsafe?.user;
+if (tg) { tg.ready(); tg.expand(); }
+
+// ══════════════════════════════
+//  STATE
+// ══════════════════════════════
+let G = {
+  coins: INIT_COINS, selMatch: null, selScore: null,
+  history: [], stats: {w:0,l:0}, lastLogin: null, running: false, _tmr: null,
+};
+
+function save() {
+  localStorage.setItem('apg4', JSON.stringify({ coins:G.coins, history:G.history.slice(0,80), stats:G.stats, lastLogin:G.lastLogin }));
+}
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem('apg4')||'{}');
+    G.coins = d.coins ?? INIT_COINS; G.history = d.history ?? [];
+    G.stats = d.stats ?? {w:0,l:0}; G.lastLogin = d.lastLogin ?? null;
+  } catch(e) {}
+}
+
+function isAdmin() { return tgU && ADMIN_IDS.includes(tgU.id); }
+
+// ══════════════════════════════
+//  HELPERS
+// ══════════════════════════════
+const fmt = n => Math.floor(n).toLocaleString('zh-CN');
+
+function toast(msg, ms=2600) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), ms);
+}
+
+function showModal(title, body, btns=[]) {
+  document.getElementById('moTitle').innerHTML = title;
+  document.getElementById('moBody').innerHTML  = body;
+  const c = document.getElementById('moBtns'); c.innerHTML = '';
+  btns.forEach(b => {
+    const btn = document.createElement('button');
+    btn.className = 'mo-btn '+(b.p?'p':'s');
+    btn.textContent = b.txt;
+    btn.onclick = () => { hideModal(); b.fn?.(); };
+    c.appendChild(btn);
+  });
+  document.getElementById('modal').classList.add('show');
+}
+function hideModal() { document.getElementById('modal').classList.remove('show'); }
+document.getElementById('modal').addEventListener('click', e => { if(e.target.id==='modal') hideModal(); });
+
+function go(tab) {
+  ['matches','bet','history','profile'].forEach((k,i) => {
+    document.querySelectorAll('.tab')[i].classList.toggle('on', k===tab);
+    document.getElementById('p-'+k).classList.toggle('on', k===tab);
+  });
+  if (tab==='history') renderHist();
+  if (tab==='profile') renderProf();
+}
+
+function updUI() {
+  document.getElementById('coinVal').textContent = fmt(G.coins);
+  document.getElementById('vipBar').classList.toggle('show', G.coins >= VIP_THRESH);
+  document.getElementById('sW').textContent = G.stats.w;
+  document.getElementById('sL').textContent = G.stats.l;
+  const t = G.stats.w + G.stats.l;
+  document.getElementById('sR').textContent = t ? Math.round(G.stats.w/t*100)+'%' : '—';
+}
+
+// ══════════════════════════════
+//  DAILY + TG
+// ══════════════════════════════
+function checkDaily() {
+  const today = new Date().toDateString();
+  if (G.lastLogin !== today) {
+    G.coins += DAILY_BONUS; G.lastLogin = today; save();
+    document.getElementById('dailyBar').classList.remove('hide');
+    setTimeout(() => document.getElementById('dailyBar').classList.add('hide'), 6000);
+  }
+}
+
+function initTg() {
+  if (!tgU) return;
+  const bar  = document.getElementById('tgBar');
+  const name = [tgU.first_name, tgU.last_name].filter(Boolean).join(' ') || '用户';
+  bar.classList.remove('hide');
+  document.getElementById('tgName').textContent = name;
+  document.getElementById('tgSub').textContent  = tgU.username ? '@'+tgU.username : 'ID: '+tgU.id;
+  if (isAdmin()) document.getElementById('tgBadge').textContent = '👑 管理员';
+  document.getElementById('profName').textContent = name;
+  document.getElementById('profId').textContent   = 'Telegram ID: '+tgU.id;
+}
+
+// ══════════════════════════════
+//  WEIGHTED RANDOM SCORE
+// ══════════════════════════════
+function pickScore() {
+  const keys  = Object.keys(WEIGHTS);
+  const total = keys.reduce((s,k) => s+WEIGHTS[k], 0);
+  let r = Math.random() * total;
+  for (const k of keys) { r -= WEIGHTS[k]; if (r <= 0) return k; }
+  return '1-0';
+}
+
+// ══════════════════════════════
+//  MATCHES
+// ══════════════════════════════
+function renderMatches() {
+  document.getElementById('matchList').innerHTML = MATCHES.map(m => `
+    <div class="mc ${G.selMatch?.id===m.id?'sel':''}" onclick="selMatch(${m.id})">
+      <div class="mc-league">${m.league}</div>
+      <div class="mc-row">
+        <div class="mc-team">${m.home}</div>
+        <div class="mc-vs">VS</div>
+        <div class="mc-team r">${m.away}</div>
+      </div>
+      <div class="mc-foot">
+        <div class="mc-time">🕐 ${m.time}</div>
+        <div class="mc-badge ${m.st}">${m.st==='live'?'🔴 直播中':m.st==='soon'?'⏰ 即将开始':'📅 今晚'}</div>
+      </div>
+    </div>`).join('');
+}
+
+function selMatch(id) {
+  if (G.running) return toast('⚽ 比赛进行中，请等待结算');
+  G.selMatch = MATCHES.find(m=>m.id===id);
+  G.selScore = null;
+  renderMatches(); renderBetHd(); renderSG(); updInfo();
+  go('bet');
+  document.getElementById('resultArea').innerHTML = '';
+}
+
+// ══════════════════════════════
+//  BET PANEL
+// ══════════════════════════════
+function renderBetHd() {
+  if (!G.selMatch) return;
+  document.getElementById('betHd').innerHTML = `
+    <div class="teams">${G.selMatch.home} <span style="color:rgba(255,215,0,0.4);font-size:13px">vs</span> ${G.selMatch.away}</div>
+    <div class="league">${G.selMatch.league}</div>`;
+}
+
+function renderSG() {
+  document.getElementById('sg').innerHTML = Object.keys(ODDS).map(s => {
+    const o = ODDS[s];
+    return `<button class="sb tier-${o.t} ${G.selScore===s?'sel':''}" onclick="selScore('${s}')">
+      <span class="sb-score">${s}</span>
+      <span class="sb-rate">+${Math.round(o.r*100)}%</span>
+    </button>`;
+  }).join('');
+}
+
+function selScore(s) { G.selScore = s; renderSG(); updInfo(); }
+
+function setAmt(v) {
+  document.getElementById('amtIn').value = v;
+  document.querySelectorAll('.pb').forEach(b => {
+    b.classList.toggle('on', parseInt(b.getAttribute('onclick').match(/\d+/)?.[0]) === v);
+  });
+  updInfo();
+}
+
+function updInfo() {
+  const amt = parseInt(document.getElementById('amtIn').value)||0;
+  const od  = G.selScore ? ODDS[G.selScore] : null;
+  document.getElementById('iAmt').textContent  = amt ? fmt(amt) : '—';
+  document.getElementById('iRate').textContent = od  ? '+'+Math.round(od.r*100)+'%' : '—';
+  document.getElementById('iWin').textContent  = (amt&&od) ? fmt(Math.floor(amt*od.r)) : '—';
+}
+
+// ══════════════════════════════
+//  CONFIRM → START
+// ══════════════════════════════
+function confirmBet() {
+  const amt = parseInt(document.getElementById('amtIn').value);
+  if (!G.selMatch)       return toast('⚽ 请先选择赛事');
+  if (!G.selScore)       return toast('🎯 请选择反对的比分');
+  if (!amt || amt < 100) return toast('💰 最低下注 100 金币');
+  if (amt > G.coins)     return toast('🪙 金币不足');
+  const od = ODDS[G.selScore];
+  showModal('确认下注',
+    `赛事：<b style="color:#e0f0e0">${G.selMatch.home} vs ${G.selMatch.away}</b><br><br>
+     反对比分：<b style="color:#ffd700;font-family:'Orbitron',monospace;font-size:16px">${G.selScore}</b><br>
+     下注：<b style="color:#ffd700">${fmt(amt)} 🪙</b> · 赔率 <b style="color:#ffd700">+${Math.round(od.r*100)}%</b><br>
+     预期赢利：<b style="color:#00e676">+${fmt(Math.floor(amt*od.r))} 🪙</b><br><br>
+     <span style="font-size:11px;color:rgba(180,210,180,0.45)">比赛结束（90分钟）后自动结算</span>`,
+    [
+      { txt:'✅ 确认', p:true, fn: () => startMatch(amt) },
+      { txt:'取消', p:false, fn: null },
+    ]);
+}
+
+// ══════════════════════════════
+//  MATCH SIMULATION
+// ══════════════════════════════
+function startMatch(amt) {
+  G.running = true;
+  G.coins  -= amt;
+  updUI(); save();
+
+  const finalScore = pickScore();
+  const [fH, fA]   = finalScore.split('-').map(Number);
+
+  document.getElementById('betBox').classList.add('hide');
+  document.getElementById('resultArea').innerHTML = '';
+  document.getElementById('matchLive').classList.remove('hide');
+  document.getElementById('mlTeams').textContent = `${G.selMatch.home} vs ${G.selMatch.away}`;
+  document.getElementById('mlInfo').innerHTML    = `反对 <b>${G.selScore}</b> · 下注 <b>${fmt(amt)} 🪙</b> · 赔率 <b>+${Math.round(ODDS[G.selScore].r*100)}%</b>`;
+  document.getElementById('mlH').textContent = '0';
+  document.getElementById('mlA').textContent = '0';
+  document.getElementById('mlFill').style.width = '0%';
+
+  // 計算進球時機
+  const goals = [];
+  for (let i=0; i<fH; i++) goals.push({at:Math.random(), who:'h', done:false});
+  for (let i=0; i<fA; i++) goals.push({at:Math.random(), who:'a', done:false});
+  goals.sort((a,b) => a.at - b.at);
+
+  let elapsed=0, curH=0, curA=0;
+
+  G._tmr = setInterval(() => {
+    elapsed++;
+    const pct = elapsed / MATCH_SECS;
+    const min = Math.min(Math.round(pct*90), 90);
+
+    goals.forEach(g => {
+      if (!g.done && pct >= g.at) {
+        g.done = true;
+        if (g.who==='h') curH++; else curA++;
+        const el = document.getElementById(g.who==='h'?'mlH':'mlA');
+        el.style.color = '#00e676'; el.style.transform = 'scale(1.6)';
+        setTimeout(() => { el.style.color=''; el.style.transform=''; }, 500);
+      }
+    });
+
+    document.getElementById('mlH').textContent   = curH;
+    document.getElementById('mlA').textContent   = curA;
+    document.getElementById('mlMin').textContent = `第 ${min} 分钟`;
+    document.getElementById('mlFill').style.width = (pct*100)+'%';
+    document.getElementById('mlCd').textContent   = elapsed < MATCH_SECS ? `距结算还有 ${MATCH_SECS-elapsed} 秒` : '正在结算...';
+
+    if (elapsed >= MATCH_SECS) {
+      clearInterval(G._tmr);
+      document.getElementById('mlH').textContent   = fH;
+      document.getElementById('mlA').textContent   = fA;
+      document.getElementById('mlMin').textContent = '⏱ 比赛结束';
+      setTimeout(() => settle(finalScore, amt), 900);
+    }
+  }, 1000);
+}
+
+// ══════════════════════════════
+//  SETTLE
+// ══════════════════════════════
+function settle(finalScore, amt) {
+  G.running = false;
+  const od     = ODDS[G.selScore];
+  const isWin  = finalScore !== G.selScore;
+  const profit = Math.floor(amt * od.r);
+
+  if (isWin) { G.coins += amt + profit; G.stats.w++; }
+  else        { G.stats.l++; }
+
+  G.history.unshift({
+    match:  `${G.selMatch.home} vs ${G.selMatch.away}`,
+    sel: G.selScore, actual: finalScore,
+    amt, change: isWin ? profit : -amt,
+    win: isWin, rate: Math.round(od.r*100),
+    time: new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}),
+  });
+
+  save(); updUI();
+
+  document.getElementById('matchLive').classList.add('hide');
+  document.getElementById('betBox').classList.remove('hide');
+
+  document.getElementById('resultArea').innerHTML = `
+    <div class="result-card ${isWin?'win':'loss'}">
+      <div class="rc-icon">${isWin?'🏆':'😤'}</div>
+      <div class="rc-title">${isWin?'反波膽成功！':'预测失败'}</div>
+      <div class="rc-desc">
+        最终比分：<strong style="color:#e0f0e0;font-family:'Orbitron',monospace;font-size:17px">${finalScore}</strong><br>
+        ${isWin
+          ? `「${G.selScore}」未出现，反波膽成功！<br>赔率 +${Math.round(od.r*100)}% · 赢利 +${fmt(profit)} 🪙`
+          : `比赛踢出「${finalScore}」，正好是你反对的比分`}
+      </div>
+      <div class="rc-amount">${isWin?'+'+fmt(profit):'-'+fmt(amt)} 🪙</div>
+      <button class="rc-btn" onclick="resetBet()">🔄 继续下注</button>
+    </div>`;
+  document.getElementById('resultArea').scrollIntoView({behavior:'smooth',block:'nearest'});
+
+  G.selScore = null; G.selMatch = null;
+  document.getElementById('amtIn').value = '';
+  document.querySelectorAll('.pb').forEach(b=>b.classList.remove('on'));
+  renderMatches();
+}
+
+function resetBet() {
+  document.getElementById('resultArea').innerHTML = '';
+  document.getElementById('betHd').innerHTML = '<div class="teams">请先选择赛事</div><div class="league">——</div>';
+  renderSG(); updInfo(); go('matches');
+}
+
+// ══════════════════════════════
+//  HISTORY
+// ══════════════════════════════
+function renderHist() {
+  const el = document.getElementById('histList');
+  if (!G.history.length) { el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div>暂无下注记录</div></div>'; return; }
+  el.innerHTML = G.history.map(h=>`
+    <div class="hi">
+      <div class="hi-l">
+        <div class="hi-match">${h.match}</div>
+        <div class="hi-detail">反对 ${h.sel} · 结果 ${h.actual} · +${h.rate}% · ${fmt(h.amt)}🪙 · ${h.time}</div>
+      </div>
+      <div class="hi-r">
+        <div class="hi-amt ${h.win?'w':'l'}">${h.win?'+':'-'}${fmt(Math.abs(h.change))}</div>
+        <div class="hi-tag ${h.win?'w':'l'}">${h.win?'✓ 胜':'✗ 负'}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════
+//  PROFILE
+// ══════════════════════════════
+function renderProf() {
+  const slot = document.getElementById('adminSlot');
+  if (isAdmin() && !slot.hasChildNodes()) {
+    slot.innerHTML = `<button class="act-btn" style="border-color:rgba(200,0,0,0.35);color:rgba(255,120,120,0.85)" onclick="adminReset()">⚙️ [管理员] 重置金币</button>`;
+  }
+}
+
+function adminReset() {
+  showModal('⚠️ 重置确认','确定将金币重置为初始 50,000 吗？',[
+    { txt:'确认重置', p:true, fn:()=>{ G.coins=INIT_COINS; G.history=[]; G.stats={w:0,l:0}; save(); updUI(); toast('✅ 已重置'); } },
+    { txt:'取消', p:false, fn:null },
+  ]);
+}
+
+// ══════════════════════════════
+//  SHARE / VIP
+// ══════════════════════════════
+function doShare() {
+  const t=G.stats.w+G.stats.l, wr=t?Math.round(G.stats.w/t*100):0;
+  const txt=`⚽【足球反波膽】战绩\n🏆 ${G.stats.w}胜 ${G.stats.l}负 · 胜率${wr}%\n💰 金币：${fmt(G.coins)}\n🎯 快来挑战！`;
+  if (tg?.openTelegramLink) tg.openTelegramLink('https://t.me/share/url?text='+encodeURIComponent(txt));
+  else navigator.clipboard?.writeText(txt).catch(()=>{});
+  G.coins += SHARE_BONUS; save(); updUI();
+  toast(`📤 分享成功！+${SHARE_BONUS} 🪙`);
+}
+
+function showVip() {
+  showModal('🏆 恭喜达到体验金门槛！',
+    `当前金币：<strong style="color:#ffd700">${fmt(G.coins)}</strong><br><br>请联系客服领取专属奖励。<br><br>📩 客服：<strong style="color:#ffd700">@Gmgn_ai_01</strong>`,
+    [{ txt:'📲 联系客服', p:true, fn:()=>{ if(tg) tg.openLink('https://t.me/Gmgn_ai_01'); } },
+     { txt:'稍后', p:false, fn:null }]);
+}
+
+// ══════════════════════════════
+//  INIT
+// ══════════════════════════════
+(function(){
+  load(); checkDaily(); initTg(); updUI(); renderMatches(); renderSG();
+})();
+</script>
+</body>
+</html>
